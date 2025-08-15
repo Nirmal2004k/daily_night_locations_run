@@ -9,72 +9,74 @@ on:
 jobs:
   run-analysis:
     runs-on: ubuntu-latest
-    timeout-minutes: 60  # Set timeout to prevent infinite runs
-    
+    timeout-minutes: 60 # Set timeout to prevent infinite runs
+
+    # Define environment variables once for the entire job
+    env:
+      PROD_DATABASE_URI: ${{ secrets.PROD_DATABASE_URI }}
+      GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+      AWS_ACCESS_KEY_READ: ${{ secrets.AWS_ACCESS_KEY_READ }}
+      AWS_SECRET_KEY_READ: ${{ secrets.AWS_SECRET_KEY_READ }}
+      AWS_ACCESS_KEY_WRITE: ${{ secrets.AWS_ACCESS_KEY_WRITE }}
+      AWS_SECRET_KEY_WRITE: ${{ secrets.AWS_SECRET_KEY_WRITE }}
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11.9'
-        cache: 'pip'  # Cache pip dependencies
-    
+        python-version: '3.11' # Using a more flexible version
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        # This is the standard path for pip's cache
+        path: ~/.cache/pip
+        # Create a unique key for the cache based on the requirements file
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libpq-dev
-    
+        sudo apt-get install -y libpq-dev openvpn
+
     - name: Install Python dependencies
       run: |
-        pip install --upgrade pip
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Install OpenVPN
-      run: sudo apt-get update && sudo apt-get install -y openvpn
 
-      
     - name: Create OVPN config
       run: echo "${{ secrets.OVPN_CONFIG }}" > config.ovpn
 
-      # 6. Connect to OpenVPN in the background
     - name: Connect to OpenVPN
       run: sudo openvpn --config config.ovpn --daemon
 
-      # 7. Wait for the VPN connection to be established
     - name: Wait for connection
       run: sleep 15
-    
+
     - name: Verify environment variables
       run: |
         echo "Checking environment variables..."
         if [ -z "$PROD_DATABASE_URI" ]; then echo "❌ PROD_DATABASE_URI not set"; exit 1; fi
         if [ -z "$GOOGLE_MAPS_API_KEY" ]; then echo "❌ GOOGLE_MAPS_API_KEY not set"; exit 1; fi
         if [ -z "$AWS_ACCESS_KEY_READ" ]; then echo "❌ AWS_ACCESS_KEY_READ not set"; exit 1; fi
+        if [ -z "$AWS_SECRET_KEY_READ" ]; then echo "❌ AWS_SECRET_KEY_READ not set"; exit 1; fi
         if [ -z "$AWS_ACCESS_KEY_WRITE" ]; then echo "❌ AWS_ACCESS_KEY_WRITE not set"; exit 1; fi
-        echo "✅ All required environment variables are set"
-      env:
-        PROD_DATABASE_URI: ${{ secrets.PROD_DATABASE_URI }}
-        GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-        AWS_ACCESS_KEY_READ: ${{ secrets.AWS_ACCESS_KEY_READ }}
-        AWS_ACCESS_KEY_WRITE: ${{ secrets.AWS_ACCESS_KEY_WRITE }}
-    
+        if [ -z "$AWS_SECRET_KEY_WRITE" ]; then echo "❌ AWS_SECRET_KEY_WRITE not set"; exit 1; fi
+        echo "✅ All required secrets are set"
+
     - name: Run daily vehicle analysis
-      env:
-        PROD_DATABASE_URI: ${{ secrets.PROD_DATABASE_URI }}
-        GOOGLE_MAPS_API_KEY: ${{ secrets.GOOGLE_MAPS_API_KEY }}
-        AWS_ACCESS_KEY_READ: ${{ secrets.AWS_ACCESS_KEY_READ }}
-        AWS_SECRET_KEY_READ: ${{ secrets.AWS_SECRET_KEY_READ }}
-        AWS_ACCESS_KEY_WRITE: ${{ secrets.AWS_ACCESS_KEY_WRITE }}
-        AWS_SECRET_KEY_WRITE: ${{ secrets.AWS_SECRET_KEY_WRITE }}
       run: |
         echo "🚀 Starting daily analysis at $(date)"
         python main.py
         echo "✅ Analysis completed at $(date)"
-    
+
     - name: Upload analysis results
-      if: always()  # Run even if the analysis fails
+      if: always() # Run even if the analysis fails
       uses: actions/upload-artifact@v4
       with:
         name: analysis-results-${{ github.run_number }}
@@ -82,10 +84,9 @@ jobs:
           night_locations.json
           *.log
         retention-days: 30
-    
+
     - name: Notify on failure
       if: failure()
       run: |
         echo "❌ Daily analysis failed!"
-        echo "Check the logs in the GitHub Actions tab"
-        # You can add email/Slack notification here if needed
+        echo "Check the logs and artifacts in the GitHub Actions tab"
