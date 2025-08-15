@@ -85,6 +85,10 @@ jobs:
           *.log
         retention-days: 30
 
+    - name: Disconnect from OpenVPN
+      if: always()
+      run: sudo killall openvpn
+
     - name: Notify on failure
       if: failure()
       run: |
