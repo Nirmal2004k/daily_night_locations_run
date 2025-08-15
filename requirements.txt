@@ -1,0 +1,20 @@
+# Core data science libraries
+pandas==2.0.3
+numpy==1.24.3
+scikit-learn==1.3.0
+
+# Database connectivity
+sqlalchemy==2.0.19
+psycopg2-binary==2.9.7
+
+# AWS libraries
+awswrangler==3.4.0
+boto3==1.28.25
+botocore==1.31.25
+
+# Google Maps API
+googlemaps==4.10.0
+
+# Additional utilities
+schedule==1.2.0
+requests==2.31.0
