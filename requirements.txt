@@ -71,7 +71,6 @@ pyproj==3.7.1
 pyspark==4.0.0
 python-dateutil==2.9.0.post0
 pytz==2025.2
-pywin32==311
 pyzmq==27.0.3
 requests==2.32.4
 s3fs==2025.7.0
