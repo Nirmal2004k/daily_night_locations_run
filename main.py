@@ -14,6 +14,16 @@ import googlemaps
 import json
 import logging
 from datetime import datetime
+from botocore.config import Config
+
+my_config = Config(
+    read_timeout=300,    # Set read timeout to 300 seconds (5 minutes)
+    connect_timeout=60,  # Set connect timeout to 60 seconds
+    retries={
+        'max_attempts': 3, # Retry up to 3 times on transient errors
+        'mode': 'standard'
+    }
+)
 
 # Configure logging
 logging.basicConfig(
