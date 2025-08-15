@@ -30,6 +30,21 @@ jobs:
       run: |
         pip install --upgrade pip
         pip install -r requirements.txt
+        
+    - name: Install OpenVPN
+      run: sudo apt-get update && sudo apt-get install -y openvpn
+
+      
+    - name: Create OVPN config
+      run: echo "${{ secrets.OVPN_CONFIG }}" > config.ovpn
+
+      # 6. Connect to OpenVPN in the background
+    - name: Connect to OpenVPN
+      run: sudo openvpn --config config.ovpn --daemon
+
+      # 7. Wait for the VPN connection to be established
+    - name: Wait for connection
+      run: sleep 15
     
     - name: Verify environment variables
       run: |
